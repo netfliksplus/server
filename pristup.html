@@ -1,236 +1,576 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Nadimci - Admin Panel</title>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
-  <style>
-    /* Stajling za izgled stranice */
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    h1 {
-      color: #4CAF50;
-    }
-    input, button {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .status {
-      margin-top: 10px;
-      color: red;
-    }
-    .user-list {
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #f4f4f4;
-      border-radius: 8px;
-    }
-    .user-item {
-      padding: 5px;
-      margin: 5px 0;
-      background-color: #e0e0e0;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-between;
-    }
-  </style>
-</head>
-<body>
-  <!-- Prijava sa nadimkom -->
-  <div id="sign-in-section">
-    <h2>Prijava sa nadimkom</h2>
-    <input type="text" id="nickname" placeholder="Unesite svoj nadimak">
-    <button onclick="signIn()">Prijavi se</button>
-    <p id="status"></p>
-  </div>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Nadimci - Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <style>
+     /* Critical CSS - Only styles that affect page layout and loading */
+body {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: url('https://jelenasavic123.github.io/SveNaEkranu/pocetnahd1.JPG') center center/cover no-repeat;
+  background-color: #121212;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+}
 
-  <hr>
+/* Zavesa koja pokriva ceo ekran sa poluprovidnom pozadinom */
+#popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  flex-direction: column; /* Postavlja elemente u kolonu (vertikalno) */
+}
 
-  <!-- Admin panel za dodavanje i brisanje nadimaka -->
-  <div id="admin-section">
-    <h2>Admin Panel</h2>
-    <h3>Dodajte novi korisnika</h3>
-    <input type="text" id="new-nickname" placeholder="Unesite nadimak za dodavanje">
-    <input type="number" id="days-valid" placeholder="Broj dana za validnost" min="1">
-    <button onclick="addNickname()">Dodaj korisnika</button>
+/* Sadržaj popupa u stilu Netflixa */
+#popup-content {
+  background-color: #141414;
+  color: white;
+  padding: 40px;
+  border-radius: 10px;
+  width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.3s ease-out;
+}
 
-    <h3>Obrišite korisnika</h3>
-    <input type="text" id="delete-nickname" placeholder="Unesite nadimak za brisanje">
-    <button onclick="deleteNickname()">Obriši korisnika</button>
+/* Animacija za popup */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
-    <p id="admin-status" class="status"></p>
-  </div>
+/* Stil za input */
+#popup input {
+  width: 60%;
+  padding: 10px;
+  margin: 15px 0;
+  background-color: #333;
+  color: white;
+  border: 1px solid #fff;
+  border-radius: 5px;
+  font-size: 11px;
+  box-sizing: border-box;
+}
 
-  <hr>
+/* Stil za dugme */
+#popup button {
+  width: 40%;
+  padding: 10px;
+  background-color: #e50914; /* Netflix crvena */
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
 
-  <!-- Prikazivanje liste korisnika -->
-  <div class="user-list" id="user-list">
-    <h3>Lista korisnika</h3>
-    <div id="user-list-items">
-      <!-- Lista korisnika će biti dinamički prikazana ovde -->
+#popup button:hover {
+  background-color: #f40612; /* Tamnija crvena pri hover-u */
+}
+
+/* Status poruke */
+#popup p {
+  font-size: 10px;
+  margin-top: 10px;
+  color: #fff;
+}
+
+/* Stil za dodatni tekst ispod login forme */
+#info-text {
+  width: 800px;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #ddd;
+  text-align: center;
+  line-height: 1.5;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Stil za tekst u #info-text */
+#info-text p {
+  margin: 10px 0;
+}
+
+#info-text strong {
+  color: #e50914; /* Netflix crvena za isticanje ključnih informacija */
+}
+
+.buttons-section {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 50%;
+  padding: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  border-radius: 15px;
+  box-shadow: 0 8px 11px rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.3s, border-color 0.3s;
+  margin-left: 20px;
+}
+
+.button-item {
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  width: 20%;
+}
+
+/* Lazy Load Image Optimization */
+.button-item img {
+  width: 100%;
+  height: auto;
+  filter: brightness(0.8);
+}
+
+.button-item h3 {
+  padding: 10px;
+  margin: 0;
+  font-size: 10px;
+  color: #fff;
+}
+
+/* Style for subscription info in the top-right corner */
+#subscription-info {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  color: white;
+  font-size: 12px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 5px 10px;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
+}
+
+/* Optimization - Small tweaks for faster rendering */
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Use media queries for responsive layouts */
+@media (max-width: 768px) {
+  .buttons-section {
+    flex-direction: column;
+    width: 90%;
+  }
+
+  .button-item {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}
+
+header {
+  margin-left: 100px;
+  padding-left: 10px;
+}
+
+.navbar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0px;
+  padding: 50px 0;
+  position: fixed;
+  box-shadow: 0 10px 80px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 255, 255, 0.2);
+  top: 0;
+  width: 50%;
+  z-index: 100;
+  transition: width 0.3s ease;
+}
+
+.navbar a {
+  display: block;
+  text-decoration: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.navbar .nav-icon {
+  width: 30px;
+  transition: transform 0.3s ease, width 0.3s ease;
+}
+
+.navbar a:hover .nav-icon {
+  transform: scale(0.8);
+  width: 84px;
+}
+
+.navbar:hover {
+  width: 60%;
+}
+
+#popup {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+#popup-content {
+  background: #121212;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+    </style>
+  </head>
+  <body>
+
+    <!-- Popup za nadimak (login) -->
+    <div id="popup">
+      <div id="popup-content">
+        <h2>Prijavite se</h2>
+        <input type="text" id="nickname" placeholder="Ovde unesite vase pretplatnicko ime">
+        <button onclick="signIn()">Prijavi se</button>
+        <p id="status"></p>
+      </div>
+<div style="position: fixed; bottom: 10px; right: 10px; max-width:120px; padding:10px; border:1px solid rgba(0, 123, 255, 0.8); border-radius:8px; text-align:center; font-family:Arial, sans-serif; color:#333; background-color:rgba(249, 249, 249, 0.5);">
+  <h2 style="font-size:16px; margin-bottom:8px; color:#fff;">Kontaktirajte nas!</h2>
+  <p style="font-size:12px; margin-bottom:12px;">
+    Skenirajte QR kod za kontakt.
+  </p>
+  <a href="https://me-qr.com" style="text-decoration:none;">
+    <img 
+      src="https://cdn.me-qr.com/qr/157219997.png?v=1736373319" 
+      alt="QR kod za kontakt" 
+      style="border:0; width:100%; height:auto; cursor:pointer; border-radius:6px; box-shadow:0 2px 4px rgba(0,0,0,0.1);"
+    />
+  </a>
+  <p style="font-size:8px; color:#666; margin-top:6px;">
+    <a href="https://me-qr.com" style="color:#007BFF; text-decoration:underline;"></a>
+  </p>
+</div>
+      <!-- Tekst ispod login forme koji je u centru -->
+      <div id="info-text">
+        <p><strong>Postanite član, kontaktirajte nas za više informacija</strong></p>
+        <p>Obratite se našem timu za sve detalje o pristupu aplikaciji sadržaju.</p>
+        <p><strong>Nudimo kompletan Netflix, Hulu, Disney+, Prime, Apple+ i jos mnogo toga.</strong></p>
+      </div>
     </div>
-  </div>
+    <nav class="navbar">
+      <a href="https://jelenasavic123.github.io/SveNaEkranu/netflix.html">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Home Icon" class="nav-icon">
+      </a>
+      <a href="https://netfliksplus.github.io/server/marvel.html">
+        <img src="https://cdn.worldvectorlogo.com/logos/marvel.svg" alt="Popular Icon" class="nav-icon">
+      </a>
+      <a href="https://netfliksplus.github.io/server/hulufimovi.html">
+        <img src="https://cdn.worldvectorlogo.com/logos/hulu.svg" alt="Genres Icon" class="nav-icon">
+      </a>
+      <a href="https://netfliksplus.github.io/server/applefilmovi.html">
+        <img src="https://jelenasavic123.github.io/SveNaEkranu/apple+.jpg" alt="Top Rated Icon" class="nav-icon">
+      </a>
+      <a href="https://netfliksplus.github.io/server/primefilmovi.html">
+        <img src="https://cdn.worldvectorlogo.com/logos/amazon-prime-video-1.svg" alt="Search Icon" class="nav-icon">
+      </a>
+      <a href="https://netfliksplus.github.io/server/diznifilmovi.html">
+        <img src="https://cdn.worldvectorlogo.com/logos/disney-wbackground.svg" alt="Search Icon" class="nav-icon">
+      </a>
+    </nav>
+    <div id="content" style="display: none;">
+      <header>
+        <h1>Izaberite sadržaj</h1>
+        <p>i započnite svoju filmsku avanturu.</p>
+      </header>
+      <main>
+        <div class="buttons-section">
+          <div class="button-item" onclick="location.href='https://jelenasavic123.github.io/SveNaEkranu/stranifilmovi-pocetna.html'">
+            <img src="https://jelenasavic123.github.io/SveNaEkranu/strano.jpg" alt="Netflix Movies">
+            <h3>Strani Sadrzaj</h3>
+          </div>
+          <div class="button-item" onclick="location.href='https://tv.garden/rs/a52KX3iei4S4BU'">
+            <img src="https://jelenasavic123.github.io/SveNaEkranu/domaci.JPG" alt="Domaće Serije">
+            <h3>Domaci Sadrzaj</h3>
+          </div>
+        </div>
+      </main>
+      <div id="subscription-info" style="display: none;">
+        Pretplata traje: <span id="remaining-days">20</span> dana
+      </div>
+      
+      <div style="position: fixed; bottom: 10px; right: 10px; max-width:100px; padding:10px; border:1px solid rgba(0, 123, 255, 0.8); border-radius:8px; text-align:center; font-family:Arial, sans-serif; color:#333; background-color:rgba(249, 249, 249, 0.5);">
+  <h2 style="font-size:11px; margin-bottom:8px; color:#fff;">Kontaktirajtae nas!</h2>
+  <p style="font-size:10px; margin-bottom:12px;">
+    Skenirajte QR kod za kontakt.
+  </p>
+  <a href="https://me-qr.com" style="text-decoration:none;">
+    <img 
+      src="https://cdn.me-qr.com/qr/157219997.png?v=1736373319" 
+      alt="QR kod za kontakt" 
+      style="border:0; width:100%; height:auto; cursor:pointer; border-radius:6px; box-shadow:0 2px 4px rgba(0,0,0,0.1);"
+    />
+  </a>
+  <p style="font-size:8px; color:#666; margin-top:6px;">
+    <a href="https://me-qr.com" style="color:#007BFF; text-decoration:underline;"></a>
+  </p>
+</div>
+      <script>
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "ef2878b912fbb2535870f666a11f04ac",
+  authDomain: "netfliksplus.firebaseapp.com",
+  projectId: "netfliksplus",
+  storageBucket: "netfliksplus.firebasestorage.app",
+  messagingSenderId: "911105089939",
+  appId: "1:911105089939:web:9a64488217b3c46db08866",
+  measurementId: "G-MHGDE0SFY4"
+};
 
-  <script>
-    // Firebase konfiguracija
-    const firebaseConfig = {
-      apiKey: "AIzaSyDMsdqasmtSLNfbf9ICXVMRpKgmiNes85o",
-      authDomain: "svenaekranu-64477.firebaseapp.com",
-      projectId: "svenaekranu-64477",
-      storageBucket: "svenaekranu-64477.firebasestorage.app",
-      messagingSenderId: "15230160013",
-      appId: "1:15230160013:web:89144bb5079637e787e6c4",
-      measurementId: "G-PED21PPQQJ"
-    };
-
-    // Inicijalizacija Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Funkcija za prijavu sa nadimkom
-    function signIn() {
-      const nickname = document.getElementById('nickname').value;
-      const statusDiv = document.getElementById('status');
-
-      if (!nickname) {
-        statusDiv.textContent = 'Molimo vas unesite nadimak!';
-        return;
-      }
-
-      // Prijava kao anonimni korisnik
-      firebase.auth().signInAnonymously()
-        .then((userCredential) => {
-          // Provera da li nadimak postoji u bazi
-          db.collection('nicknames').doc(nickname).get()
-            .then((doc) => {
-              if (doc.exists) {
-                const nicknameData = doc.data();
-                const expirationDate = nicknameData.expirationDate;
-                const currentDate = new Date();
-                const diffTime = new Date(expirationDate) - currentDate;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (nicknameData.available && diffDays > 0) {
-                  statusDiv.textContent = 'Prijavljeni ste kao: ' + nickname;
-                  alert("Dobrodošli " + nickname);
-                } else {
-                  statusDiv.textContent = 'Nadimak je istekao ili nije aktivan.';
-                }
-              } else {
-                statusDiv.textContent = 'Nadimak nije pronađen.';
-              }
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        // Funkcija za prijavu sa nadimkom
+        function signIn() {
+          const nickname = document.getElementById('nickname').value;
+          const statusDiv = document.getElementById('status');
+          const popup = document.getElementById('popup');
+          if (!nickname) {
+            statusDiv.textContent = 'Unesite ime koje vam je dodeljeno od strane našeg tima za pristup sadržaju.';
+            return;
+          }
+          // Prijava kao anonimni korisnik
+          auth.signInAnonymously()
+            .then((userCredential) => {
+              // Provera da li nadimak postoji u bazi
+              db.collection('nicknames').doc(nickname).get()
+                .then((doc) => {
+                  if (doc.exists && doc.data().available) {
+                    statusDiv.textContent = 'Prijavljeni ste kao: ' + nickname;
+                    popup.style.display = 'none';
+                    // Sačuvaj nadimak i datum isteka pretplate u localStorage
+                    const expirationDate = doc.data().expirationDate; // Pretpostavljam da je ovo datum u bazi
+                    localStorage.setItem('nickname', nickname);
+                    localStorage.setItem('expirationDate', expirationDate);
+                    // Otvori sadržaj stranice nakon prijave
+                    document.getElementById('content').style.display = 'block';
+                    updateSubscriptionInfo(expirationDate); // Ažuriraj informaciju o pretplati
+                  } else {
+                    statusDiv.textContent = 'Nemate aktivnu nalog. Obratite se našem timu kako bismo vam kreirali nalog i omogućili pristup sadržaju.';
+                  }
+                })
+                .catch((error) => {
+                  console.error('Nemate aktivan nalog. Obratite se našem timu kako bismo vam kreirali nalog i omogućili pristup sadržaju.: ', error);
+                  statusDiv.textContent = 'Nemate aktivan nalog. Obratite se našem timu kako bismo vam kreirali nalog i omogućili pristup sadržaju.';
+                });
             })
             .catch((error) => {
-              console.error('Greška prilikom pretrage nadimka: ', error);
-              statusDiv.textContent = 'Greška prilikom pretrage nadimka.';
+              console.error('Greška pri prijavi: ', error);
+              statusDiv.textContent = 'Nemate aktivan nalog. Obratite se našem timu kako bismo vam kreirali nalog i omogućili pristup sadržaju.';
             });
-        })
-        .catch((error) => {
-          console.error('Greška pri prijavi: ', error);
-          statusDiv.textContent = 'Greška prilikom prijave.';
-        });
-    }
-
-    // Funkcija za dodavanje nadimka sa datumom isteka
-    function addNickname() {
-      const newNickname = document.getElementById('new-nickname').value;
-      const daysValid = parseInt(document.getElementById('days-valid').value);
-      const adminStatusDiv = document.getElementById('admin-status');
-
-      if (!newNickname || isNaN(daysValid) || daysValid <= 0) {
-        adminStatusDiv.textContent = 'Molimo unesite validan nadimak i broj dana!';
-        return;
+        }
+        // Funkcija za ažuriranje broja dana pretplate
+        function updateSubscriptionInfo(expirationDate) {
+          const remainingDaysElement = document.getElementById('remaining-days');
+          const subscriptionInfoElement = document.getElementById('subscription-info');
+          // Pretpostavljamo da expirationDate dolazi u formatu 'yyyy-mm-dd'
+          const expiration = new Date(expirationDate);
+          const today = new Date();
+          const diffTime = expiration - today;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0) {
+            remainingDaysElement.textContent = diffDays;
+            subscriptionInfoElement.style.display = 'block';
+          } else {
+            remainingDaysElement.textContent = 0;
+            subscriptionInfoElement.style.display = 'block';
+          }
+        }
+        // Provera prijave prilikom učitavanja stranice
+        window.onload = function() {
+          const nickname = localStorage.getItem('nickname');
+          const expirationDate = localStorage.getItem('expirationDate');
+          if (nickname && expirationDate) {
+            // Ako postoji sačuvani nadimak u localStorage, proveri da li je validan u Firebase-u
+            db.collection('nicknames').doc(nickname).get()
+              .then((doc) => {
+                if (doc.exists && doc.data().available) {
+                  // Ako je nadimak validan, otvori sadržaj
+                  console.log("Korisnik je već prijavljen sa nadimkom: " + nickname);
+                  document.getElementById('content').style.display = 'block';
+                  updateSubscriptionInfo(expirationDate); // Ažuriraj informaciju o pretplati
+                } else {
+                  // Ako nije validan, izbriši ga iz localStorage i prikazi popup
+                  localStorage.removeItem('nickname');
+                  localStorage.removeItem('expirationDate');
+                  document.getElementById('popup').style.display = 'flex';
+                }
+              })
+              .catch((error) => {
+                console.error('Greška pri proveri nadimka: ', error);
+                document.getElementById('popup').style.display = 'flex';
+              });
+          } else {
+            document.getElementById('popup').style.display = 'flex';
+          }
+        };
+      </script>
+     <script>
+      /* ------------------- */
+      /* ACCESS DENIED ERROR */
+      /* ------------------- */
+      function display_access_denied_error() {
+        document.body.innerHTML = '<div id="access-denied-error" style="display: flex; justify-content: center; align-items: center; height: 100vh; background: url(\'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEica0ohmmvadKEUM9RcEtQ3aZ7ZXEWeKYO_UOMZCaKbsVxDpnNVPqxhV2Z34SvQAqIRhHWxUNmzO2D6mxkwClKC7yugfBXZMIAhrMBiys2EUcZXvpcMBnDOsnNLrLs7BPu44nO-lpRPzgbljBfTkdB0CYzH0A-MJVravHOeJgD6RjbmYFhcxNX6EqXLuzA9/w362-h640/slikaza-Zemlje.JPG\') no-repeat center center; background-size: cover;">' +
+          '<div style="text-align: center; background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);">' +
+          '<h1 style="font-size: 32px; margin-bottom: 20px;">Latest Updates on Turkish Series</h1>' // Naslov iznad dugmeta
+          +
+          '<button onclick="window.location.href=\'https://jelenasavic123.github.io/SveNaEkranu/sajt-za-svenaekranu-blokador-ne-brisi.html\'" style="padding: 20px 40px; font-size: 24px; background-color: #f44336; color: white; border: none; border-radius: 8px; cursor: pointer;">' +
+          'Poseti Sajt' +
+          '</button>' +
+          '<p style="margin-top: 20px; font-size: 18px; color: #333;">Follow the latest news, reviews, and trends in the world of series. Stay up-to-date with premieres.</p>' // Tekst ispod dugmeta
+          +
+          '</div>' +
+          '</div>'
       }
-
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + daysValid);
-
-      // Dodajemo nadimak u Firestore sa datumom isteka
-      db.collection('nicknames').doc(newNickname).set({
-        available: true, // Oznaka da je nadimak aktivan
-        expirationDate: expirationDate.toISOString()
-      })
-      .then(() => {
-        adminStatusDiv.textContent = 'Nadimak "' + newNickname + '" je uspešno dodat! Važi do ' + expirationDate.toLocaleDateString();
-        updateUserList();  // Ažuriraj listu korisnika
-      })
-      .catch((error) => {
-        console.error('Greška prilikom dodavanja nadimka: ', error);
-        adminStatusDiv.textContent = 'Greška prilikom dodavanja nadimka.';
-      });
-    }
-
-    // Funkcija za brisanje nadimka
-    function deleteNickname() {
-      const deleteNicknameInput = document.getElementById('delete-nickname').value;
-      const adminStatusDiv = document.getElementById('admin-status');
-
-      if (!deleteNicknameInput) {
-        adminStatusDiv.textContent = 'Molimo unesite nadimak koji želite da obrišete.';
-        return;
+      /* ------------------------- */
+      /* BLOCK BLACKLIST COUNTRIES */
+      /* ------------------------- */
+      function block_blacklist_countries() {
+        // Blacklist countries
+        const blacklist_countries = [
+          "AN", // Ankara
+          "AD", // Adana
+          "IS", // Istanbul
+          "IZ", // Izmir
+          "US", // United States
+          "VN", // Vietnam
+          "UM", // United States Minor Outlying Islands
+          "SG", // Singapore
+          "NZ", // New Zealand
+          "MX", // Mexico
+          "LR", // Liberia
+          "IL", // Israel
+          "IE", // Ireland
+          "FI", // Finland
+          "EG", // Egypt
+          "KY", // Cayman Islands
+          "CA", // Canada
+          "BD", // Bangladesh
+          "AR", // Argentina
+          "AQ", // Antarctica
+          "AX", // Aland Islands
+          "AS", // American Samoa
+          "BR", // Brazil
+          "CN", // China 
+          "HK", // Hong Kong
+          "CX", // Christmas Island
+          "CC", // Cocos
+          "CK", // Cook Islands
+          "GF", // French Guiana
+          "IN", // India
+          "KP", // Korea
+          "KR", // KR
+          "MY", // Malaysia
+          "MC", // Monaco
+          "PL", // Poland
+          "SA", // Saudi Arabia
+          "UM", // Ukrajina
+          "AE", // Ujedinjeni Arapski Emirati
+          "JP", // Japan
+          "NG", //  Nigeria
+          "PH", //  Philippines 
+          "KE", //  Philippines 
+          "GB", //  United Kingdom 
+ 
+        ]
+        // Detecting the users country
+        function get_country_code(api_url) {
+          fetch(api_url, {
+              method: 'GET'
+            })
+            .then(response => response.json()) // Getting ip info as json
+            .then(result => {
+              if (blacklist_countries.includes(result.country)) { // If my ip country code is in blacklist
+                display_access_denied_error() // Access denied error
+              }
+            })
+            .catch(error => console.log('error', error))
+        }
+        // Getting country code from third party api
+        get_country_code("https://get.geojs.io/v1/ip/country.json")
       }
+      /* ------------------------- */
+      /* ALLOW WHITELIST COUNTRIES */
+      /* ------------------------- */
+      function allow_whitelist_countries() {
+        // Whitelist countries
+        const whitelist_countries = [
+           
+        ]
+        // Detecting the users country
+        function get_country_code(api_url) {
+          fetch(api_url, {
+              method: 'GET'
+            })
+            .then(response => response.json()) // Getting ip info as json
+            .then(result => {
+              if (!whitelist_countries.includes(result.country)) { // If my ip country code is not in whitelist
+                display_access_denied_error() // Access denied error
+              }
+            })
+            .catch(error => console.log('error', error))
+        }
+        // Getting country code from third party api
+        get_country_code("https://get.geojs.io/v1/ip/country.json")
+      }
+      /* -------------- */
+      /* CALL FUNCTIONS */
+      /* -------------- */
+      block_blacklist_countries() // Block blacklist countries
+      // allow_whitelist_countries() // Allow whitelist countries
+      function performSearch(event) {
+        event.preventDefault();
+        var query = document.getElementById('search-input').value;
+        var searchUrl = 'https://www.svenadlanuplus.club/search?q=' + encodeURIComponent(query);
+        // Preusmeravanje na URL za pretragu
+        window.location.href = searchUrl;
+      }
+    </script>
 
-      // Brisanje nadimka iz Firestore
-      db.collection('nicknames').doc(deleteNicknameInput).delete()
-        .then(() => {
-          adminStatusDiv.textContent = 'Nadimak "' + deleteNicknameInput + '" je uspešno obrisan.';
-          updateUserList();  // Ažuriraj listu korisnika
-        })
-        .catch((error) => {
-          console.error('Greška prilikom brisanja nadimka: ', error);
-          adminStatusDiv.textContent = 'Greška prilikom brisanja nadimka.';
-        });
-    }
-
-    // Funkcija za ažuriranje liste korisnika
-    function updateUserList() {
-      const userListDiv = document.getElementById('user-list-items');
-      userListDiv.innerHTML = ''; // Očisti postojeću listu
-
-      // Dohvati sve nadimke iz Firestore
-      db.collection('nicknames').get()
-        .then((snapshot) => {
-          snapshot.forEach((doc) => {
-            const nicknameData = doc.data();
-            const expirationDate = new Date(nicknameData.expirationDate);
-            const currentDate = new Date();
-            const diffTime = expirationDate - currentDate;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            const userItem = document.createElement('div');
-            userItem.classList.add('user-item');
-            userItem.innerHTML = `
-              <span>${doc.id}</span>
-              <span>Važi do: ${expirationDate.toLocaleDateString()}</span>
-              <span>Preostali dani: ${diffDays} dana</span>
-            `;
-            userListDiv.appendChild(userItem);
-          });
-        })
-        .catch((error) => {
-          console.error('Greška pri dohvatili korisnika: ', error);
-        });
-    }
-
-    // Ažuriraj listu korisnika pri učitavanju stranice
-    window.onload = function() {
-      updateUserList();
-    };
-  </script>
-</body>
+<div class="widget">
+  
+</div>
+  </body>
 </html>
